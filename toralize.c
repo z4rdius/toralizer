@@ -3,43 +3,36 @@
 #include "toralize.h"
 
 // generate packets for CONNECT
-Req *request(const char *dstip, const int dstport) {
+Req *request(struct sockaddr_in *addr) {
     Req *req;
 
     req = malloc(REQSIZE);
 
     req->vn = 4;
     req->cd = 1;
-    req->dstport = htons(dstport);
-    req->dstip = inet_addr(dstip);
+    req->dstport = addr->sin_port;
+    req->dstip = addr->sin_addr.s_addr;
     strncpy(req->userid, USERNAME, 7);
     
     return req;
 }
 
+int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
 
-int main(int argc, char *argv[]) {
-    char *host;
-    int port, s;
+    int s;
     struct sockaddr_in sock;
     Req *req;
     Res *res;
     char buf[RESSIIZE];
     int success;
-    char tmp[512];
 
-    if (argc < 3) {
-        fprintf(stderr, "Usage: %s <host> <port>\n", argv[0]);
-    
-        return -1;
-    }
-
-    host = argv[1];
-    port = atoi(argv[2]);
+    int (*p)(int, const struct sockaddr*, socklen_t);
+    p = dlsym(RTLD_NEXT, "connect");
 
     // create a socket
     s = socket(AF_INET, SOCK_STREAM, 0);
-    if (s < 0) {
+    if (s < 0)
+    {
         perror("socket error");
 
         return -1;
@@ -50,7 +43,7 @@ int main(int argc, char *argv[]) {
     sock.sin_addr.s_addr = inet_addr(PROXY);
 
     // make a connection to the SOCKS4 server
-    if (connect(s, (struct sockaddr *)&sock, sizeof(sock))) {
+    if (p(s, (struct sockaddr *)&sock, sizeof(sock))) {
         perror("connect error");
 
         return -1;
@@ -58,11 +51,12 @@ int main(int argc, char *argv[]) {
 
     printf("Connection to the Proxy Server established...!\n");
 
-    req = request(host, port);
+    req = request((struct sockaddr_in *)addr);
     write(s, req, REQSIZE);
 
     memset(buf, 0, RESSIIZE);
-    if (read(s, buf, RESSIIZE) < 1) {
+    if (read(s, buf, RESSIIZE) < 1)
+    {
         perror("read error");
         free(req);
         close(s);
@@ -70,10 +64,11 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
-    res = (Res *) buf;
+    res = (Res *)buf;
 
     success = (res->cd == 90);
-    if (!success) {
+    if (!success)
+    {
         fprintf(stderr, "Unable to traverse the proxy, error code: %d\n", res->cd);
 
         close(s);
@@ -82,23 +77,11 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
-    printf("Successful connection to %s:%d through the proxy...!\n", host, port);
+    printf("Connected trough the proxy successfully...!\n");
 
-    memset(tmp, 0, 512);
-    snprintf(tmp, 511, 
-        "HEAD / HTTP/1.0\r\n"
-        "Host: www.google.com\r\n"
-        "\r\n"
-    );
+    dup2(s, sockfd);
 
-    write(s, tmp, strlen(tmp));
-    memset(tmp, 0, 512);
-    read(s, tmp, 511);
-    printf("'%s'\n", tmp);
-
-    close(s);
     free(req);
-
 
     return 0;
 }
