@@ -11,7 +11,9 @@
 
 #define PROXY     "127.0.0.1"
 #define PROXYPORT 9050
-
+#define USERNAME "toraliz"
+#define REQSIZE sizeof(struct proxy_request)
+#define RESSIIZE sizeof(struct proxy_response)
 
 // type aliases for the packets
 typedef unsigned char int8;
@@ -53,4 +55,7 @@ struct proxy_response {
     int32 __;
 };
 
-typedef struct proxy_request Res;
+typedef struct proxy_response Res;
+
+Req *request(const char*, const int);
+int main(int, char**);
