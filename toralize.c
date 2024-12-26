@@ -2,6 +2,7 @@
 
 #include "toralize.h"
 
+// generate packets for CONNECT
 Req *request(const char *dstip, const int dstport) {
     Req *req;
 
@@ -25,6 +26,7 @@ int main(int argc, char *argv[]) {
     Res *res;
     char buf[RESSIIZE];
     int success;
+    char tmp[512];
 
     if (argc < 3) {
         fprintf(stderr, "Usage: %s <host> <port>\n", argv[0]);
@@ -80,7 +82,19 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
-    printf("Successful connection to %s:%d through the proxy...!", host, port);
+    printf("Successful connection to %s:%d through the proxy...!\n", host, port);
+
+    memset(tmp, 0, 512);
+    snprintf(tmp, 511, 
+        "HEAD / HTTP/1.0\r\n"
+        "Host: www.google.com\r\n"
+        "\r\n"
+    );
+
+    write(s, tmp, strlen(tmp));
+    memset(tmp, 0, 512);
+    read(s, tmp, 511);
+    printf("'%s'\n", tmp);
 
     close(s);
     free(req);
